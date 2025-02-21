@@ -40,7 +40,7 @@ def process_frame(frame, tracker: screen_tracker.ScreenTracker()):
     print(f"Status: {verdict}")
     print(f"Reason: {reason}")
 
-    if "ON TASK" in verdict:
+    if "ON TASK" in str(verdict):
         tracker.on_task = True
     else:
         tracker.on_task = False
