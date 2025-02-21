@@ -1,4 +1,4 @@
-# Augmented EF
+# Augmented  EF
 
 Welcome to **Augmented EF** – a Python implementation for the AugmentedEF project. This project leverages modern Python features and libraries to deliver an efficient, user-friendly experience.
 
