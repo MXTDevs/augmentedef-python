@@ -1,11 +1,16 @@
 import customtkinter
 import tkinter as tk
+import tkinter.filedialog as fd
+import pygame
 
 import os
 import ctypes
 
 from augmentedef import camera_preview
 from augmentedef import data_recorder
+
+# Initialize pygame mixer
+pygame.mixer.init()
 
 recorder = data_recorder.DataRecorder()
 
@@ -98,7 +103,7 @@ buttonSetOffsetOrigin = customtkinter.CTkButton(master=faceCamButtonsFrame, text
 buttonSetOffsetOrigin.pack(side="left", padx=5, pady=(5, 5), anchor="w")
 
 buttonStopTrackingFaceCam = customtkinter.CTkButton(master=faceCamButtonsFrame, text="Stop Tracking",
-                                                command=lambda: cam1_preview.tracker.stop_tracking(), width=100)
+                                                    command=lambda: cam1_preview.tracker.stop_tracking(), width=100)
 buttonStopTrackingFaceCam.pack(side="left", padx=5, pady=(5, 5), anchor="w")
 
 FaceCamControlsLabel = customtkinter.CTkLabel(master=MainControlsFrame, text="SCREENCAM OPTIONS",
@@ -141,8 +146,6 @@ entrySessionID.pack(padx=10, pady=(0, 5), side="top", anchor="w")
 generalButtonsFrame = customtkinter.CTkFrame(master=MainControlsFrame)
 generalButtonsFrame.pack(side="top", anchor="w")
 
-
-
 buttonStartRecordingData = customtkinter.CTkButton(master=generalButtonsFrame, text="Start Recording Data",
                                                    command=lambda: start_recording_with_sessionID())
 buttonStartRecordingData.pack(pady=5, padx=10, side="left", anchor="w")
@@ -150,6 +153,62 @@ buttonStartRecordingData.pack(pady=5, padx=10, side="left", anchor="w")
 buttonStartRecordingData = customtkinter.CTkButton(master=generalButtonsFrame, text="Stop Recording Data",
                                                    command=lambda: recorder.stop_recording())
 buttonStartRecordingData.pack(pady=5, padx=10, side="left", anchor="w")
+
+AudioInterventionOptionsLabel = customtkinter.CTkLabel(master=MainControlsFrame, text="AUDIO INTERVENTION OPTIONS",
+                                                       font=("Segoe UI", 14, "bold"))
+AudioInterventionOptionsLabel.pack(padx=10, pady=(5, 0), side="top", anchor="w")
+
+labelOfftaskTimeout = customtkinter.CTkLabel(master=MainControlsFrame, text="Off Task Timeout")
+labelOfftaskTimeout.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+entryOfftaskTimeout = customtkinter.CTkEntry(master=MainControlsFrame, placeholder_text="10")
+entryOfftaskTimeout.pack(padx=10, pady=(0, 5), side="top", anchor="w")
+
+# Offtask Criteria Label
+labelOfftaskCriteria = customtkinter.CTkLabel(master=MainControlsFrame, text="Off Task Criteria")
+labelOfftaskCriteria.pack(padx=10, pady=(5, 0), side="top", anchor="w")
+
+# Checkboxes for FaceCam and ScreenCam
+checkboxFaceCam = customtkinter.CTkCheckBox(master=MainControlsFrame, text="FaceCam")
+checkboxFaceCam.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+checkboxScreenCam = customtkinter.CTkCheckBox(master=MainControlsFrame, text="ScreenCam")
+checkboxScreenCam.pack(padx=10, pady=(0, 5), side="top", anchor="w")
+
+# Intervention Volume Label
+labelInterventionVolume = customtkinter.CTkLabel(master=MainControlsFrame, text="Intervention Volume")
+labelInterventionVolume.pack(padx=10, pady=(5, 0), side="top", anchor="w")
+
+# Frame to hold slider and value label
+frameIntervention = customtkinter.CTkFrame(master=MainControlsFrame)
+frameIntervention.pack(padx=10, pady=(0, 5), side="top", anchor="w", fill="x")
+
+# Slider for Intervention Volume (0 to 10) with lambda
+sliderInterventionVolume = customtkinter.CTkSlider(
+    master=frameIntervention, from_=0, to=10, command=lambda value: update_slider_value(value)
+)
+sliderInterventionVolume.pack(padx=(0, 5), pady=0, side="left", expand=True, fill="x")
+
+# Label to show the slider value
+labelVolumeValue = customtkinter.CTkLabel(master=frameIntervention, text="0")  # Default value
+labelVolumeValue.pack(padx=(5, 0), pady=0, side="right")
+
+# Audio File Label
+labelAudioFile = customtkinter.CTkLabel(master=MainControlsFrame, text="Audio File")
+labelAudioFile.pack(padx=10, pady=(5, 0), side="top", anchor="w")
+
+# Frame for Entry and Button
+frameAudioFile = customtkinter.CTkFrame(master=MainControlsFrame)
+frameAudioFile.pack(padx=10, pady=(0, 5), side="top", anchor="w", fill="x")
+
+# Entry for Audio File Path
+entryAudioFile = customtkinter.CTkEntry(master=frameAudioFile, placeholder_text="Select an audio file")
+entryAudioFile.pack(padx=(0, 5), pady=0, side="left", expand=True, fill="x")
+
+# Browse Button
+buttonBrowseAudio = customtkinter.CTkButton(master=frameAudioFile, text="Browse", width=80,
+                                            command=lambda: browse_audio_file())
+buttonBrowseAudio.pack(padx=(5, 0), pady=0, side="right")
 
 DataFrame = customtkinter.CTkScrollableFrame(master=root)
 DataFrame.pack(side="left", anchor="e", pady=(5, 20), padx=(10, 20), fill="both", expand=True)
@@ -168,6 +227,9 @@ FaceCamTVectorLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
 FaceCamRVectorLabel = customtkinter.CTkLabel(master=DataFrame, text="Rotation Vector : X=00 Y=00 Z=00")
 FaceCamRVectorLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+FaceCamOffTaskTime = customtkinter.CTkLabel(master=DataFrame, text="FaceCam Off Task time: 0")
+FaceCamOffTaskTime.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
 # FaceCamRQuaternionLabel = customtkinter.CTkLabel(master=DataFrame, text="Rotation Quaternion : X=00 Y=00 Z=00 W=00")
 # FaceCamRQuaternionLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
@@ -191,6 +253,9 @@ ScreenCamLastReturnReason = customtkinter.CTkLabel(master=ScreenCamLastReturnRea
                                                    wraplength=300, anchor="w")
 ScreenCamLastReturnReason.grid(row=0, column=0, sticky="nswe", padx=10, pady=(0, 5), columnspan=1)
 
+ScreenCamOffTaskTime = customtkinter.CTkLabel(master=DataFrame, text="ScreenCam Off Task time: 0")
+ScreenCamOffTaskTime.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
 # ScreenCamLastReceiveResult = customtkinter.CTkLabel(master=DataFrame, text="LAST REC RESULT: None")
 # ScreenCamLastReceiveResult.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
@@ -199,6 +264,22 @@ GeneralDataLogLabel.pack(padx=10, pady=(0, 10), side="top", anchor="n")
 
 GeneralStatusLabel = customtkinter.CTkLabel(master=DataFrame, text="Status: Not recording")
 GeneralStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+
+# Function to update the label when the slider moves
+def update_slider_value(value):
+    labelVolumeValue.configure(text=f"{int(float(value))}")  # Convert value to integer
+
+
+# Function to browse and select an audio file
+def browse_audio_file():
+    global audio_path
+    file_path = fd.askopenfilename(filetypes=[("WAV Audio Files", "*.wav")])  # Restrict to .wav files
+    if file_path:  # If a file is selected, update the entry field
+        entryAudioFile.delete(0, "end")
+        entryAudioFile.insert(0, file_path)
+        audio_path = file_path
+
 
 
 # Handle window focus events
@@ -237,12 +318,63 @@ def start_tracking_facecam_with_values():
 
     cam1_preview.tracker.start_tracking(newMaxDistance, newMaxYaw, newMaxPitch)
 
+
 def start_recording_with_sessionID():
     sessionID = entrySessionID.get()
     recorder.start_recording(sessionID)
 
 
+screenCam_OffTask_CurrentTime = 0
+faceCam_OffTask_CurrentTime = 0
+
+audio_intervention_playing = False  # Track if the audio is playing
+audio_path = "audio_file.mp3"  # Replace with actual file path
+
+OffTask_Timeout_Value = 10
+
+
+def refresh_audio_intervention():
+    global audio_intervention_playing
+
+    # If FaceCam criteria is True and Face Cam Off Task is more than 10 seconds
+    # OR If ScreenCam criteria is True and Screen Cam Off Task time is more than 10 seconds
+    # AND Audio Intervention is not already playing AND Audio Path is not None
+    if (((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
+        (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
+
+        # Play Audio Intervention in Loop
+        pygame.mixer.music.load(audio_path)
+        pygame.mixer.music.play(-1)  # -1 makes it loop indefinitely
+        audio_intervention_playing = True
+
+    # If FaceCam criteria is True and Face Cam Off task is less than 10 seconds
+    # OR If ScreenCam criteria is True and Screen Cam Off Task time is less than 10 seconds
+    # Stop Playing Audio Intervention
+    if ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
+          (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
+
+        pygame.mixer.music.stop()
+        audio_intervention_playing = False
+        print("Stopped Audio")
+
+    if not checkboxFaceCam.get() and not checkboxScreenCam.get() and audio_intervention_playing:
+        pygame.mixer.music.stop()
+        audio_intervention_playing = False
+        print("Stopped Audio")
+
+
+
+
 def update_data_log():
+    global faceCam_OffTask_CurrentTime
+    global screenCam_OffTask_CurrentTime
+    global OffTask_Timeout_Value
+
+    try:
+        OffTask_Timeout_Value = int(entryOfftaskTimeout.get() or 10)  # Defaults to 0 if empty
+    except ValueError:
+        OffTask_Timeout_Value = 10  # Handle invalid input gracefully
+
     # Updating the FaceCam Status
     if cam1_preview.tracker.tracking_active:
         FaceCamStatusLabel.configure(text="STATUS: Active")
@@ -252,8 +384,14 @@ def update_data_log():
     # Updating FaceCam Task Status
     if cam1_preview.tracker.on_task and cam1_preview.tracker.tracking_active:
         FaceCamTaskStatusLabel.configure(text="TASK STATUS: ON TASK", font=("Segoe UI", 14, "bold"), text_color="green")
+        faceCam_OffTask_CurrentTime = 0
+        FaceCamOffTaskTime.configure(text=f"FaceCam Off Task time:  {faceCam_OffTask_CurrentTime:.2f}")
     else:
         FaceCamTaskStatusLabel.configure(text="TASK STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
+
+        if cam1_preview.tracker.tracking_active:
+            faceCam_OffTask_CurrentTime += 0.1
+            FaceCamOffTaskTime.configure(text=f"FaceCam Off Task time:  {faceCam_OffTask_CurrentTime:.2f}")
 
     # Updating the FaceCam Translation Vector
     if cam1_preview.tracker.smoothed_position is not None and cam1_preview.tracker.tracking_active:
@@ -290,8 +428,14 @@ def update_data_log():
     # Updating ScreenCam Task Status
     if cam2_preview.tracker.on_task and cam2_preview.tracker.tracking_active:
         ScreenCamTaskStatus.configure(text="TASK STATUS: ON TASK", font=("Segoe UI", 14, "bold"), text_color="green")
+        screenCam_OffTask_CurrentTime = 0
+        ScreenCamOffTaskTime.configure(text=f"ScreenCam Off Task time: {screenCam_OffTask_CurrentTime:.2f}")
     else:
         ScreenCamTaskStatus.configure(text="TASK STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
+
+        if cam2_preview.tracker.tracking_active:
+            screenCam_OffTask_CurrentTime += 0.1
+            ScreenCamOffTaskTime.configure(text=f"ScreenCam Off Task time: {screenCam_OffTask_CurrentTime:.2f}")
 
     # Updating ScreenCam Latency Response
     if cam2_preview.tracker.tracking_active:
@@ -313,6 +457,8 @@ def update_data_log():
         GeneralStatusLabel.configure(text="Not recording...", font=("Segoe UI", 14, "bold"), text_color="red")
 
     recorder.log_data(cam1_preview, cam2_preview)
+
+    refresh_audio_intervention()
 
     root.after(100, update_data_log)
 
