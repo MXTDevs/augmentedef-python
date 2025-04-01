@@ -22,8 +22,10 @@ class DataRecorder:
             self.writer.writerow([
                 "Timestamp", "FaceCam Status", "FaceCam Task Status",
                 "FaceCam_T_X", "FaceCam_T_Y", "FaceCam_T_Z",
-                "FaceCam_R_X", "FaceCam_R_Y", "FaceCam_R_Z",
-                "ScreenCam Status", "ScreenCam Task Status", "ScreenCam Latency", "ScreenCam Last Return Reason"
+                "FaceCam_R_X", "FaceCam_R_Y", "FaceCam_R_Z", "FaceCam OffTask Time",
+                "ScreenCam Status", "ScreenCam Task Status", "ScreenCam Latency", "ScreenCam Last Return Reason", "ScreenCam OffTask Time",
+                "SilversModel Task Status", "SilversModel Output", "SilversModel OffTask Time"
+
             ])
             self.recording = True
             print(f"Recording started, saving to {self.filename}")
@@ -34,7 +36,7 @@ class DataRecorder:
             self.recording = False
             print(f"Recording stopped. Data saved to {self.filename}")
 
-    def log_data(self, cam1_preview, cam2_preview):
+    def log_data(self, cam1_preview, cam2_preview, silversModel_status, silversModel_Output, silversModelOffTaskTime):
         if self.recording and self.writer:
             self.writer.writerow([
                 datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -46,8 +48,12 @@ class DataRecorder:
                 cam1_preview.tracker.smoothed_angles[0] if cam1_preview.tracker.smoothed_angles is not None else 0.0,
                 cam1_preview.tracker.smoothed_angles[1] if cam1_preview.tracker.smoothed_angles is not None else 0.0,
                 cam1_preview.tracker.smoothed_angles[2] if cam1_preview.tracker.smoothed_angles is not None else 0.0,
+                cam1_preview.tracker.offTask_currentTime,
                 "Active" if cam2_preview.tracker.tracking_active else "Not Active",
                 "ON TASK" if cam2_preview.tracker.on_task and cam2_preview.tracker.tracking_active is not None else "OFF TASK",
                 cam2_preview.tracker.last_vision_llm_latency if cam2_preview.tracker.tracking_active is not None else 0.0,
-                cam2_preview.tracker.last_vision_reason if cam2_preview.tracker.tracking_active is not None else "None"
+                cam2_preview.tracker.last_vision_reason if cam2_preview.tracker.tracking_active is not None else "None",
+                cam2_preview.tracker.offTask_currentTime,
+                "On Task" if silversModel_status else "Off Task", silversModel_Output, silversModelOffTaskTime
+
             ])

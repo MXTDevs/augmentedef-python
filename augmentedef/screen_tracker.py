@@ -6,6 +6,7 @@ class ScreenTracker:
         self.tracking_active = False
         self.on_task = False
         self.last_vision_reason = ""
+        self.offTask_currentTime = 0
 
     def start_tracking(self):
         self.tracking_active = True

@@ -180,22 +180,20 @@ checkboxSilversModel = customtkinter.CTkCheckBox(master=MainControlsFrame, text=
 checkboxSilversModel.pack(padx=10, pady=(0, 5), side="top", anchor="w")
 
 # Intervention Volume Label
-labelInterventionVolume = customtkinter.CTkLabel(master=MainControlsFrame, text="Intervention Volume")
-labelInterventionVolume.pack(padx=10, pady=(5, 0), side="top", anchor="w")
+# labelInterventionVolume = customtkinter.CTkLabel(master=MainControlsFrame, text="Intervention Volume")
+# labelInterventionVolume.pack(padx=10, pady=(5, 0), side="top", anchor="w")
 
 # Frame to hold slider and value label
-frameIntervention = customtkinter.CTkFrame(master=MainControlsFrame)
-frameIntervention.pack(padx=10, pady=(0, 5), side="top", anchor="w", fill="x")
+# frameIntervention = customtkinter.CTkFrame(master=MainControlsFrame)
+# frameIntervention.pack(padx=10, pady=(0, 5), side="top", anchor="w", fill="x")
 
 # Slider for Intervention Volume (0 to 10) with lambda
-sliderInterventionVolume = customtkinter.CTkSlider(
-    master=frameIntervention, from_=0, to=10, command=lambda value: update_slider_value(value)
-)
-sliderInterventionVolume.pack(padx=(0, 5), pady=0, side="left", expand=True, fill="x")
+# sliderInterventionVolume = customtkinter.CTkSlider(master=frameIntervention, from_=0, to=10, command=lambda value: update_slider_value(value))
+# sliderInterventionVolume.pack(padx=(0, 5), pady=0, side="left", expand=True, fill="x")
 
 # Label to show the slider value
-labelVolumeValue = customtkinter.CTkLabel(master=frameIntervention, text="0")  # Default value
-labelVolumeValue.pack(padx=(5, 0), pady=0, side="right")
+#labelVolumeValue = customtkinter.CTkLabel(master=frameIntervention, text="0")  # Default value
+#labelVolumeValue.pack(padx=(5, 0), pady=0, side="right")
 
 # Audio File Label
 labelAudioFile = customtkinter.CTkLabel(master=MainControlsFrame, text="Audio File")
@@ -289,7 +287,8 @@ GeneralStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
 # Function to update the label when the slider moves
 def update_slider_value(value):
-    labelVolumeValue.configure(text=f"{int(float(value))}")  # Convert value to integer
+    pass
+    #labelVolumeValue.configure(text=f"{int(float(value))}")  # Convert value to integer
 
 
 # Function to browse and select an audio file
@@ -347,6 +346,7 @@ def start_recording_with_sessionID():
 screenCam_OffTask_CurrentTime = 0
 faceCam_OffTask_CurrentTime = 0
 silversModel_OffTask_CurrentTime = 0
+silversModel_OnTask = False
 
 audio_intervention_playing = False  # Track if the audio is playing
 audio_path = "audio_file.mp3"  # Replace with actual file path
@@ -391,6 +391,7 @@ def update_data_log():
     global silversModel_OffTask_CurrentTime
     global OffTask_Timeout_Value
     global Model_prediction_output
+    global silversModel_OnTask
 
     try:
         OffTask_Timeout_Value = int(entryOfftaskTimeout.get() or 10)  # Defaults to 0 if empty
@@ -416,9 +417,11 @@ def update_data_log():
             SilverModelTaskStatusLabel.configure(text="STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
             silversModel_OffTask_CurrentTime += 0.1
             SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
+            silversModel_OnTask = False
         else:
             SilverModelTaskStatusLabel.configure(text="STATUS: ON TASK", font=("Segoe UI", 14, "bold"),
                                                  text_color="green")
+            silversModel_OnTask = True
             silversModel_OffTask_CurrentTime = 0
             SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
 
@@ -431,12 +434,14 @@ def update_data_log():
     if cam1_preview.tracker.on_task and cam1_preview.tracker.tracking_active:
         FaceCamTaskStatusLabel.configure(text="TASK STATUS: ON TASK", font=("Segoe UI", 14, "bold"), text_color="green")
         faceCam_OffTask_CurrentTime = 0
+        cam1_preview.tracker.offTask_currentTime = faceCam_OffTask_CurrentTime
         FaceCamOffTaskTime.configure(text=f"FaceCam Off Task time:  {faceCam_OffTask_CurrentTime:.2f}")
     else:
         FaceCamTaskStatusLabel.configure(text="TASK STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
 
         if cam1_preview.tracker.tracking_active:
             faceCam_OffTask_CurrentTime += 0.1
+            cam1_preview.tracker.offTask_currentTime = faceCam_OffTask_CurrentTime
             FaceCamOffTaskTime.configure(text=f"FaceCam Off Task time:  {faceCam_OffTask_CurrentTime:.2f}")
 
     # Updating the FaceCam Translation Vector
@@ -474,12 +479,14 @@ def update_data_log():
     if cam2_preview.tracker.on_task and cam2_preview.tracker.tracking_active:
         ScreenCamTaskStatus.configure(text="TASK STATUS: ON TASK", font=("Segoe UI", 14, "bold"), text_color="green")
         screenCam_OffTask_CurrentTime = 0
+        cam2_preview.tracker.offTask_currentTime = screenCam_OffTask_CurrentTime
         ScreenCamOffTaskTime.configure(text=f"ScreenCam Off Task time: {screenCam_OffTask_CurrentTime:.2f}")
     else:
         ScreenCamTaskStatus.configure(text="TASK STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
 
         if cam2_preview.tracker.tracking_active:
             screenCam_OffTask_CurrentTime += 0.1
+            cam2_preview.tracker.offTask_currentTime = screenCam_OffTask_CurrentTime
             ScreenCamOffTaskTime.configure(text=f"ScreenCam Off Task time: {screenCam_OffTask_CurrentTime:.2f}")
 
     # Updating ScreenCam Latency Response
@@ -501,7 +508,7 @@ def update_data_log():
     else:
         GeneralStatusLabel.configure(text="Not recording...", font=("Segoe UI", 14, "bold"), text_color="red")
 
-    recorder.log_data(cam1_preview, cam2_preview)
+    recorder.log_data(cam1_preview, cam2_preview, silversModel_OnTask, Model_prediction_output, silversModel_OffTask_CurrentTime)
 
     refresh_audio_intervention()
 

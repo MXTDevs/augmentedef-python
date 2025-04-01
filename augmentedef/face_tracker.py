@@ -19,6 +19,7 @@ class FaceTracker:
         self.max_distance_on_task = 15
         self.max_yaw_on_task = 25
         self.max_pitch_on_task = 30
+        self.offTask_currentTime = 0
 
     def start_tracking(self, new_max_distance_on_task, new_max_yaw_on_task, new_max_pitch_on_task):
 
