@@ -8,6 +8,7 @@ import ctypes
 
 from augmentedef import camera_preview
 from augmentedef import data_recorder
+from augmentedef import silvers_model_tools
 
 # Initialize pygame mixer
 pygame.mixer.init()
@@ -213,8 +214,8 @@ buttonBrowseAudio.pack(padx=(5, 0), pady=0, side="right")
 DataFrame = customtkinter.CTkScrollableFrame(master=root)
 DataFrame.pack(side="left", anchor="e", pady=(5, 20), padx=(10, 20), fill="both", expand=True)
 
-DataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="FACECAM DATA LOG", font=("Segoe UI", 14, "bold"))
-DataLogLabel.pack(padx=10, pady=(0, 10), side="top", anchor="n")
+FaceCamDataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="FACECAM DATA LOG", font=("Segoe UI", 14, "bold"))
+FaceCamDataLogLabel.pack(padx=10, pady=(0, 10), side="top", anchor="n")
 
 FaceCamStatusLabel = customtkinter.CTkLabel(master=DataFrame, text="STATUS: Not Active, Set Reference Tracking")
 FaceCamStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
@@ -234,8 +235,22 @@ FaceCamOffTaskTime.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 # FaceCamRQuaternionLabel = customtkinter.CTkLabel(master=DataFrame, text="Rotation Quaternion : X=00 Y=00 Z=00 W=00")
 # FaceCamRQuaternionLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
-DataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="SCREENCAM DATA LOG", font=("Segoe UI", 14, "bold"))
-DataLogLabel.pack(padx=10, pady=(10, 10), side="top", anchor="n")
+SilversModelDataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="SILVER MODEL DATA LOG",
+                                                  font=("Segoe UI", 14, "bold"))
+SilversModelDataLogLabel.pack(padx=10, pady=(10, 10), side="top", anchor="n")
+
+SilverModelStatusLabel = customtkinter.CTkLabel(master=DataFrame, text="STATUS: Not Active, Set Reference Tracking")
+SilverModelStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+SilverModelTaskStatusLabel = customtkinter.CTkLabel(master=DataFrame, text="TASK STATUS: OFF TASK")
+SilverModelTaskStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+SilverModelOutputLabel = customtkinter.CTkLabel(master=DataFrame, text="MODEL OUTPUT: 0")
+SilverModelOutputLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+ScreenCamDataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="SCREENCAM DATA LOG",
+                                               font=("Segoe UI", 14, "bold"))
+ScreenCamDataLogLabel.pack(padx=10, pady=(10, 10), side="top", anchor="n")
 
 ScreenCamStatusLabel = customtkinter.CTkLabel(master=DataFrame, text="STATUS: Not Active, Start Sending Requests")
 ScreenCamStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
@@ -279,7 +294,6 @@ def browse_audio_file():
         entryAudioFile.delete(0, "end")
         entryAudioFile.insert(0, file_path)
         audio_path = file_path
-
 
 
 # Handle window focus events
@@ -331,6 +345,7 @@ audio_intervention_playing = False  # Track if the audio is playing
 audio_path = "audio_file.mp3"  # Replace with actual file path
 
 OffTask_Timeout_Value = 10
+Model_prediction_output = 0
 
 
 def refresh_audio_intervention():
@@ -340,8 +355,8 @@ def refresh_audio_intervention():
     # OR If ScreenCam criteria is True and Screen Cam Off Task time is more than 10 seconds
     # AND Audio Intervention is not already playing AND Audio Path is not None
     if (((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
-        (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
-
+         (
+                 checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
         # Play Audio Intervention in Loop
         pygame.mixer.music.load(audio_path)
         pygame.mixer.music.play(-1)  # -1 makes it loop indefinitely
@@ -351,8 +366,8 @@ def refresh_audio_intervention():
     # OR If ScreenCam criteria is True and Screen Cam Off Task time is less than 10 seconds
     # Stop Playing Audio Intervention
     if ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
-          (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
-
+        (
+                checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
         pygame.mixer.music.stop()
         audio_intervention_playing = False
         print("Stopped Audio")
@@ -363,12 +378,11 @@ def refresh_audio_intervention():
         print("Stopped Audio")
 
 
-
-
 def update_data_log():
     global faceCam_OffTask_CurrentTime
     global screenCam_OffTask_CurrentTime
     global OffTask_Timeout_Value
+    global Model_prediction_output
 
     try:
         OffTask_Timeout_Value = int(entryOfftaskTimeout.get() or 10)  # Defaults to 0 if empty
@@ -378,8 +392,28 @@ def update_data_log():
     # Updating the FaceCam Status
     if cam1_preview.tracker.tracking_active:
         FaceCamStatusLabel.configure(text="STATUS: Active")
+        SilverModelStatusLabel.configure(text="STATUS: Active")
+
+        silver_model_input = (cam1_preview.tracker.smoothed_position[0],
+                              cam1_preview.tracker.smoothed_position[1],
+                              cam1_preview.tracker.smoothed_position[2],
+                              cam1_preview.tracker.smoothed_angles[0],
+                              cam1_preview.tracker.smoothed_angles[1],
+                              cam1_preview.tracker.smoothed_angles[2])
+
+        Model_prediction_output = silvers_model_tools.run_model(silver_model_input)
+        SilverModelOutputLabel.configure(text=f"MODEL OUTPUT: {Model_prediction_output:.2f}")
+
+        if Model_prediction_output > 0.95 or Model_prediction_output < 0.05:
+            SilverModelTaskStatusLabel.configure(text="STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
+        else:
+            SilverModelTaskStatusLabel.configure(text="STATUS: ON TASK", font=("Segoe UI", 14, "bold"),
+                                                 text_color="green")
+
     else:
         FaceCamStatusLabel.configure(text="STATUS: Not Active, Set Face Reference")
+        SilverModelStatusLabel.configure(text="STATUS: Not Active, Set Face Reference")
+        SilverModelOutputLabel.configure(text=f"MODEL OUTPUT: 0")
 
     # Updating FaceCam Task Status
     if cam1_preview.tracker.on_task and cam1_preview.tracker.tracking_active:
@@ -401,8 +435,7 @@ def update_data_log():
                                                                                     "Y: " + str(
                 round(cam1_preview.tracker.smoothed_position[1], 2)) + " "
                                                                        "Z: " + str(
-                round(cam1_preview.tracker.smoothed_position[2], 2))
-        )
+                round(cam1_preview.tracker.smoothed_position[2], 2)))
     else:
         FaceCamTVectorLabel.configure(text="Translation Vector : X=0.00 Y=0.00 Z=0.00")
 
