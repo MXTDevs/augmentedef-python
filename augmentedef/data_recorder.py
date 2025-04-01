@@ -24,7 +24,7 @@ class DataRecorder:
                 "FaceCam_T_X", "FaceCam_T_Y", "FaceCam_T_Z",
                 "FaceCam_R_X", "FaceCam_R_Y", "FaceCam_R_Z", "FaceCam OffTask Time",
                 "ScreenCam Status", "ScreenCam Task Status", "ScreenCam Latency", "ScreenCam Last Return Reason", "ScreenCam OffTask Time",
-                "SilversModel Task Status", "SilversModel Output", "SilversModel OffTask Time"
+                "SilversModel Task Status", "SilversModel Output", "SilversModel OffTask Time", "Playing Audio Intervention"
 
             ])
             self.recording = True
@@ -36,7 +36,7 @@ class DataRecorder:
             self.recording = False
             print(f"Recording stopped. Data saved to {self.filename}")
 
-    def log_data(self, cam1_preview, cam2_preview, silversModel_status, silversModel_Output, silversModelOffTaskTime):
+    def log_data(self, cam1_preview, cam2_preview, silversModel_status, silversModel_Output, silversModelOffTaskTime, PlayingAudioIntervention):
         if self.recording and self.writer:
             self.writer.writerow([
                 #datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
@@ -55,6 +55,7 @@ class DataRecorder:
                 cam2_preview.tracker.last_vision_llm_latency if cam2_preview.tracker.tracking_active is not None else 0.0,
                 cam2_preview.tracker.last_vision_reason if cam2_preview.tracker.tracking_active is not None else "None",
                 cam2_preview.tracker.offTask_currentTime,
-                "On Task" if silversModel_status else "Off Task", silversModel_Output, silversModelOffTaskTime
+                "On Task" if silversModel_status else "Off Task", silversModel_Output, silversModelOffTaskTime,
+                "Playing" if PlayingAudioIntervention else "None"
 
             ])

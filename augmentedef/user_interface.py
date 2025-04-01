@@ -508,7 +508,7 @@ def update_data_log():
     else:
         GeneralStatusLabel.configure(text="Not recording...", font=("Segoe UI", 14, "bold"), text_color="red")
 
-    recorder.log_data(cam1_preview, cam2_preview, silversModel_OnTask, Model_prediction_output, silversModel_OffTask_CurrentTime)
+    recorder.log_data(cam1_preview, cam2_preview, silversModel_OnTask, Model_prediction_output, silversModel_OffTask_CurrentTime, audio_intervention_playing)
 
     refresh_audio_intervention()
 
