@@ -176,6 +176,9 @@ checkboxFaceCam.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 checkboxScreenCam = customtkinter.CTkCheckBox(master=MainControlsFrame, text="ScreenCam")
 checkboxScreenCam.pack(padx=10, pady=(0, 5), side="top", anchor="w")
 
+checkboxSilversModel = customtkinter.CTkCheckBox(master=MainControlsFrame, text="SilversModel")
+checkboxSilversModel.pack(padx=10, pady=(0, 5), side="top", anchor="w")
+
 # Intervention Volume Label
 labelInterventionVolume = customtkinter.CTkLabel(master=MainControlsFrame, text="Intervention Volume")
 labelInterventionVolume.pack(padx=10, pady=(5, 0), side="top", anchor="w")
@@ -247,6 +250,9 @@ SilverModelTaskStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
 SilverModelOutputLabel = customtkinter.CTkLabel(master=DataFrame, text="MODEL OUTPUT: 0")
 SilverModelOutputLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+SilverModelOffTaskTime = customtkinter.CTkLabel(master=DataFrame, text="FaceCam Off Task time: 0")
+SilverModelOffTaskTime.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 
 ScreenCamDataLogLabel = customtkinter.CTkLabel(master=DataFrame, text="SCREENCAM DATA LOG",
                                                font=("Segoe UI", 14, "bold"))
@@ -340,6 +346,7 @@ def start_recording_with_sessionID():
 
 screenCam_OffTask_CurrentTime = 0
 faceCam_OffTask_CurrentTime = 0
+silversModel_OffTask_CurrentTime = 0
 
 audio_intervention_playing = False  # Track if the audio is playing
 audio_path = "audio_file.mp3"  # Replace with actual file path
@@ -355,8 +362,8 @@ def refresh_audio_intervention():
     # OR If ScreenCam criteria is True and Screen Cam Off Task time is more than 10 seconds
     # AND Audio Intervention is not already playing AND Audio Path is not None
     if (((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
-         (
-                 checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
+         (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
+         (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
         # Play Audio Intervention in Loop
         pygame.mixer.music.load(audio_path)
         pygame.mixer.music.play(-1)  # -1 makes it loop indefinitely
@@ -366,13 +373,13 @@ def refresh_audio_intervention():
     # OR If ScreenCam criteria is True and Screen Cam Off Task time is less than 10 seconds
     # Stop Playing Audio Intervention
     if ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
-        (
-                checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
+        (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
+        (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
         pygame.mixer.music.stop()
         audio_intervention_playing = False
         print("Stopped Audio")
 
-    if not checkboxFaceCam.get() and not checkboxScreenCam.get() and audio_intervention_playing:
+    if not checkboxFaceCam.get() and not checkboxScreenCam.get() and not checkboxSilversModel.get() and audio_intervention_playing:
         pygame.mixer.music.stop()
         audio_intervention_playing = False
         print("Stopped Audio")
@@ -381,6 +388,7 @@ def refresh_audio_intervention():
 def update_data_log():
     global faceCam_OffTask_CurrentTime
     global screenCam_OffTask_CurrentTime
+    global silversModel_OffTask_CurrentTime
     global OffTask_Timeout_Value
     global Model_prediction_output
 
@@ -406,9 +414,13 @@ def update_data_log():
 
         if Model_prediction_output > 0.95 or Model_prediction_output < 0.05:
             SilverModelTaskStatusLabel.configure(text="STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
+            silversModel_OffTask_CurrentTime += 0.1
+            SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
         else:
             SilverModelTaskStatusLabel.configure(text="STATUS: ON TASK", font=("Segoe UI", 14, "bold"),
                                                  text_color="green")
+            silversModel_OffTask_CurrentTime = 0
+            SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
 
     else:
         FaceCamStatusLabel.configure(text="STATUS: Not Active, Set Face Reference")
