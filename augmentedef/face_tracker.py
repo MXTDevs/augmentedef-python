@@ -13,8 +13,8 @@ class FaceTracker:
         self.buffer_index = 0
         self.tvec = None
         self.rvec = None
-        self.smoothed_position = None
-        self.smoothed_angles = None
+        self.smoothed_position = np.zeros(3)
+        self.smoothed_angles = np.zeros(3)
         self.on_task = False
         self.max_distance_on_task = 15
         self.max_yaw_on_task = 25

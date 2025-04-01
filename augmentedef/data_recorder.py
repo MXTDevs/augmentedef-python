@@ -39,7 +39,8 @@ class DataRecorder:
     def log_data(self, cam1_preview, cam2_preview, silversModel_status, silversModel_Output, silversModelOffTaskTime):
         if self.recording and self.writer:
             self.writer.writerow([
-                datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                #datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                datetime.now().strftime("%Y-%m-%d %H:%M:%S") + f".{datetime.now().microsecond // 1000:03d}",
                 "Active" if cam1_preview.tracker.tracking_active else "Not Active",
                 "ON TASK" if cam1_preview.tracker.on_task and cam1_preview.tracker.tracking_active else "OFF TASK",
                 cam1_preview.tracker.smoothed_position[0] if cam1_preview.tracker.smoothed_position is not None else 0.0,

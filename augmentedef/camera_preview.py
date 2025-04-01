@@ -104,6 +104,13 @@ class CameraPreview:
             frame = cv2.resize(frame, (350, 250))
             frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
 
+            # Get the frame dimensions
+            height, width, _ = frame.shape
+            center_x, center_y = width // 2, height // 2
+
+            # Draw a dot at the center
+            cv2.circle(frame, (center_x, center_y), radius=5, color=(255, 0, 0), thickness=-1)
+
             if self.run_FaceMesh:
                 # If this camera preview is supposed to run the face mesh estimation
                 # we fire the processing of the frame
