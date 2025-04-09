@@ -5,12 +5,15 @@ import pygame
 
 import os
 import ctypes
+import time
+import threading
 
 from augmentedef import camera_preview
 from augmentedef import data_recorder
 from augmentedef import silvers_model_tools
 
 # Initialize pygame mixer
+pygame.init()
 pygame.mixer.init()
 
 recorder = data_recorder.DataRecorder()
@@ -165,6 +168,12 @@ labelOfftaskTimeout.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 entryOfftaskTimeout = customtkinter.CTkEntry(master=MainControlsFrame, placeholder_text="10")
 entryOfftaskTimeout.pack(padx=10, pady=(0, 5), side="top", anchor="w")
 
+labelAudioInterventionLoopDelay = customtkinter.CTkLabel(master=MainControlsFrame, text="Audio Intervention Loop Delay")
+labelAudioInterventionLoopDelay.pack(padx=10, pady=(0, 0), side="top", anchor="w")
+
+entryAudioInterventionLoopDelay = customtkinter.CTkEntry(master=MainControlsFrame, placeholder_text="10")
+entryAudioInterventionLoopDelay.pack(padx=10, pady=(0, 5), side="top", anchor="w")
+
 # Offtask Criteria Label
 labelOfftaskCriteria = customtkinter.CTkLabel(master=MainControlsFrame, text="Off Task Criteria")
 labelOfftaskCriteria.pack(padx=10, pady=(5, 0), side="top", anchor="w")
@@ -192,8 +201,8 @@ checkboxSilversModel.pack(padx=10, pady=(0, 5), side="top", anchor="w")
 # sliderInterventionVolume.pack(padx=(0, 5), pady=0, side="left", expand=True, fill="x")
 
 # Label to show the slider value
-#labelVolumeValue = customtkinter.CTkLabel(master=frameIntervention, text="0")  # Default value
-#labelVolumeValue.pack(padx=(5, 0), pady=0, side="right")
+# labelVolumeValue = customtkinter.CTkLabel(master=frameIntervention, text="0")  # Default value
+# labelVolumeValue.pack(padx=(5, 0), pady=0, side="right")
 
 # Audio File Label
 labelAudioFile = customtkinter.CTkLabel(master=MainControlsFrame, text="Audio File")
@@ -288,7 +297,7 @@ GeneralStatusLabel.pack(padx=10, pady=(0, 0), side="top", anchor="w")
 # Function to update the label when the slider moves
 def update_slider_value(value):
     pass
-    #labelVolumeValue.configure(text=f"{int(float(value))}")  # Convert value to integer
+    # labelVolumeValue.configure(text=f"{int(float(value))}")  # Convert value to integer
 
 
 # Function to browse and select an audio file
@@ -354,32 +363,55 @@ audio_path = "audio_file.mp3"  # Replace with actual file path
 OffTask_Timeout_Value = 10
 Model_prediction_output = 0
 
+Audio_Loop_Delay_Seconds = 10
+audio_thread = None
 
-def refresh_audio_intervention():
+
+def audio_intervention_loop():
     global audio_intervention_playing
 
-    # If FaceCam criteria is True and Face Cam Off Task is more than 10 seconds
-    # OR If ScreenCam criteria is True and Screen Cam Off Task time is more than 10 seconds
-    # AND Audio Intervention is not already playing AND Audio Path is not None
-    if (((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
-         (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
-         (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime > OffTask_Timeout_Value)) and not audio_intervention_playing and audio_path):
-        # Play Audio Intervention in Loop
+    while audio_intervention_playing:
         pygame.mixer.music.load(audio_path)
-        pygame.mixer.music.play(-1)  # -1 makes it loop indefinitely
+        pygame.mixer.music.play()
+
+        # Wait for current audio to finish
+        while pygame.mixer.music.get_busy() and audio_intervention_playing:
+            time.sleep(0.1)
+
+        if not audio_intervention_playing:
+            break
+
+        # Delay before playing again
+        time.sleep(Audio_Loop_Delay_Seconds)
+
+
+def refresh_audio_intervention():
+    global audio_intervention_playing, audio_thread
+    global Audio_Loop_Delay_Seconds
+    Audio_Loop_Delay_Seconds = int(entryAudioInterventionLoopDelay.get() or 10)  # fallback to 10
+
+    should_play = (
+            ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
+             (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime > OffTask_Timeout_Value) or
+             (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime > OffTask_Timeout_Value))
+            and audio_path
+    )
+
+    should_stop = (
+            ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
+             (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
+             (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime < OffTask_Timeout_Value)) or
+            not audio_path or
+            (not checkboxFaceCam.get() and not checkboxScreenCam.get() and not checkboxSilversModel.get())
+    )
+
+    if should_play and not audio_intervention_playing:
         audio_intervention_playing = True
+        audio_thread = threading.Thread(target=audio_intervention_loop, daemon=True)
+        audio_thread.start()
+        print("Started Audio Loop")
 
-    # If FaceCam criteria is True and Face Cam Off task is less than 10 seconds
-    # OR If ScreenCam criteria is True and Screen Cam Off Task time is less than 10 seconds
-    # Stop Playing Audio Intervention
-    if ((checkboxFaceCam.get() and faceCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
-        (checkboxScreenCam.get() and screenCam_OffTask_CurrentTime < OffTask_Timeout_Value) or
-        (checkboxSilversModel.get() and silversModel_OffTask_CurrentTime < OffTask_Timeout_Value)) and audio_intervention_playing or not audio_path:
-        pygame.mixer.music.stop()
-        audio_intervention_playing = False
-        print("Stopped Audio")
-
-    if not checkboxFaceCam.get() and not checkboxScreenCam.get() and not checkboxSilversModel.get() and audio_intervention_playing:
+    elif should_stop and audio_intervention_playing:
         pygame.mixer.music.stop()
         audio_intervention_playing = False
         print("Stopped Audio")
@@ -394,7 +426,7 @@ def update_data_log():
     global silversModel_OnTask
 
     try:
-        OffTask_Timeout_Value = int(entryOfftaskTimeout.get() or 10)  # Defaults to 0 if empty
+        OffTask_Timeout_Value = int(entryOfftaskTimeout.get().strip() or 10)  # Defaults to 0 if empty
     except ValueError:
         OffTask_Timeout_Value = 10  # Handle invalid input gracefully
 
@@ -414,16 +446,19 @@ def update_data_log():
         SilverModelOutputLabel.configure(text=f"MODEL OUTPUT: {Model_prediction_output:.2f}")
 
         if Model_prediction_output > 0.95 or Model_prediction_output < 0.05:
-            SilverModelTaskStatusLabel.configure(text="STATUS: OFF TASK", font=("Segoe UI", 14, "bold"), text_color="red")
+            SilverModelTaskStatusLabel.configure(text="STATUS: OFF TASK", font=("Segoe UI", 14, "bold"),
+                                                 text_color="red")
             silversModel_OffTask_CurrentTime += 0.1
-            SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
+            SilverModelOffTaskTime.configure(
+                text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
             silversModel_OnTask = False
         else:
             SilverModelTaskStatusLabel.configure(text="STATUS: ON TASK", font=("Segoe UI", 14, "bold"),
                                                  text_color="green")
             silversModel_OnTask = True
             silversModel_OffTask_CurrentTime = 0
-            SilverModelOffTaskTime.configure(text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
+            SilverModelOffTaskTime.configure(
+                text=f"Silvers Model Off Task time: {silversModel_OffTask_CurrentTime:.2f}")
 
     else:
         FaceCamStatusLabel.configure(text="STATUS: Not Active, Set Face Reference")
@@ -508,7 +543,8 @@ def update_data_log():
     else:
         GeneralStatusLabel.configure(text="Not recording...", font=("Segoe UI", 14, "bold"), text_color="red")
 
-    recorder.log_data(cam1_preview, cam2_preview, silversModel_OnTask, Model_prediction_output, silversModel_OffTask_CurrentTime, audio_intervention_playing)
+    recorder.log_data(cam1_preview, cam2_preview, silversModel_OnTask, Model_prediction_output,
+                      silversModel_OffTask_CurrentTime, audio_intervention_playing)
 
     refresh_audio_intervention()
 
